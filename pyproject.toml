@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "asta-data"
+version = "0.1.0"
+description = "Dataset retrieval and preprocessing for the Asta wake-word detector"
+requires-python = ">=3.11"
+dependencies = [
+    "requests>=2.32",
+    "tqdm>=4.66",
+    "PyYAML>=6.0",
+    "soundfile>=0.12",
+    "numpy>=1.26",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]

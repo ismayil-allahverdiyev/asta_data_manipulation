@@ -1,0 +1,5 @@
+/.env
+
+# Large Common Voice datasets
+data/raw/common_voice/
+data/processed/common_voice/
