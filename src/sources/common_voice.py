@@ -6,6 +6,8 @@ import tarfile
 import pandas as pd
 import requests
 from dotenv import load_dotenv
+from dataset.sampling import identifying_dataset, sampling_dataset
+from filtering.wake_word import filter_metadata
 
 
 load_dotenv()
@@ -15,6 +17,12 @@ BASE_URL = "https://mozilladatacollective.com/api"
 DATASET_ID = "cmu5jplf300nwmh07iqvk9leo"
 DATASET_DIR = "C:/Users/Isi/Downloads/1789502799671-cv-corpus-27.0-2026-09-11-en.tar.gz"
 METADATA_DIR = "./data/raw/common_voice/validated.tsv"
+COMMON_VOICE_LABELED_METADATA_PATH = (
+    "./data/processed/common_voice/common_voice_labeled.tsv"
+)
+
+HARD_NEGATIVE_DIR = "./data/processed/common_voice/hard_negatives"
+EASY_NEGATIVE_DIR = "./data/processed/common_voice/easy_negatives"
 
 def get_dataset_info() -> dict:
     url = f"{BASE_URL}/datasets/{DATASET_ID}"
@@ -108,30 +116,34 @@ def load_validated_metadata(
     return pd.read_csv(output_path, sep="\t")
 
 # Filtering metadata to seperate into easy and hard negatives
-def filter_metadata() -> None:
-    metadata_path = Path(METADATA_DIR)
-    metadata_pd = pd.read_csv(metadata_path, sep="\t")
-    keyword = "asta"
-    
-    metadata_pd["type"] = 0 # 0 symbolizes the easy negative(it is not at all similar to asta and shouldn't activate)
-    total = 0
-    counter = 0
-    for idx, sentence in metadata_pd["sentence"].items():
-        total+=1
-        if(sentence.find(keyword) != -1):
-            counter+=1
-            metadata_pd.loc[idx, "type"] = 1 # 1 symbolizes the hard negative(it is similar to asta but shouldn't activate)
-    
-    print(str(counter) + " hard negatives out of " + str(total))
-    
-    output_path = "./data/processed/common_voice/common_voice_labeled.tsv"
+def filter_common_voice_metadata() -> None:
+    filter_metadata(
+        keyword="asta",
+        read_directory=METADATA_DIR,
+        write_directory=COMMON_VOICE_LABELED_METADATA_PATH
+    )
 
-    metadata_pd.to_csv(
-        output_path,
-        sep="\t",
-        index=False,
+# Splitting the filtered metadata into hard and easy negatives, and extracting the corresponding MP3 files from the Common Voice archive.
+def split_mp3_files() -> None:
+    res = identifying_dataset(
+        dataset=pd.read_csv(
+            COMMON_VOICE_LABELED_METADATA_PATH, sep="\t"
+        ),
+        sample_size=100000,
+        random_state=42,
+    )
+    
+    print(f"Hard negatives: {len(res['hard_negatives']):,}")
+    print(f"Easy negatives: {len(res['easy_negatives']):,}")
+    
+    sampling_dataset(
+        hard_negatives_dataset=res["hard_negatives"],
+        easy_negatives_dataset=res["easy_negatives"],
+        hard_negative_dir=HARD_NEGATIVE_DIR,
+        easy_negative_dir=EASY_NEGATIVE_DIR,
+        data_dir=DATASET_DIR
     )
 
 
 if __name__ == "__main__":
-    filter_metadata()
+    filter_common_voice_metadata()
